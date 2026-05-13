@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TIPS GPT</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/static/styles.css?v=20260427-qa3" />
+  </head>
+  <body>
+    <div class="app" data-sidebar="closed" data-inspector="closed">
+      <aside class="sidebar" aria-label="Conversations">
+        <div class="sidebar-head">
+          <div class="brand-lockup">
+            <span class="brand-mark">T</span>
+            <div>
+              <strong>TIPS GPT</strong>
+              <span>Local ECB corpus</span>
+            </div>
+          </div>
+          <button id="newChatBtn" class="icon-btn primary-action" type="button" title="New chat" aria-label="New chat">+</button>
+        </div>
+
+        <label class="search-box">
+          <span>Search</span>
+          <input id="chatSearch" type="search" placeholder="Conversations" autocomplete="off" />
+        </label>
+
+        <nav id="chatList" class="chat-list" aria-label="History"></nav>
+
+        <div class="sidebar-foot">
+          <div class="mini-stat">
+            <span>Documents</span>
+            <strong id="docCount">...</strong>
+          </div>
+          <div class="mini-stat">
+            <span>Chunks</span>
+            <strong id="chunkCount">...</strong>
+          </div>
+          <div class="settings-row">
+            <label>
+              Depth
+              <select id="topK">
+                <option value="16">Normal</option>
+                <option value="24" selected>High</option>
+                <option value="32">Maximum</option>
+              </select>
+            </label>
+            <button id="exportBtn" class="text-btn" type="button">Export</button>
+          </div>
+        </div>
+      </aside>
+
+      <main class="chat-main" aria-label="Chat TIPS">
+        <header class="chat-topbar">
+          <button id="sidebarBtn" class="icon-btn" type="button" title="History" aria-label="History">=</button>
+          <div class="title-block">
+            <h1 id="chatTitle">New chat</h1>
+            <div class="badges">
+              <span id="engineBadge">Codex High</span>
+              <span id="indexBadge">RAG premium</span>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <label class="model-select">
+              <span>Model</span>
+              <select id="modelPreset" aria-label="Answer model">
+                <option value="codex_high" selected>Codex High</option>
+                <option value="codex_fast">Codex Fast</option>
+                <option value="local_rag">Local RAG</option>
+              </select>
+            </label>
+            <button id="clearChatBtn" class="text-btn" type="button">Clear</button>
+            <button id="refsBtn" class="text-btn" type="button">Sources</button>
+            <a class="text-btn" href="/logout">Sign out</a>
+          </div>
+        </header>
+
+        <section id="messages" class="messages" aria-live="polite"></section>
+        <button id="jumpBottomBtn" class="jump-bottom hidden" type="button" aria-label="Jump to bottom">v</button>
+
+        <section class="quick-prompts" id="quickPrompts" aria-label="Quick prompts">
+          <button type="button" data-prompt="What is the difference between OLO and LKT in TIPS?">OLO vs LKT</button>
+          <button type="button" data-prompt="Explain the LKT flow step by step">LKT flow</button>
+          <button type="button" data-prompt="Which currencies are supported in TIPS?">Currencies</button>
+          <button type="button" data-prompt="Which CRs affect R2026.NOV?">R2026.NOV CRs</button>
+        </section>
+
+        <form id="askForm" class="composer" aria-label="Send question">
+          <div class="composer-tools">
+            <div class="mode-switch" role="tablist" aria-label="Mode">
+              <button class="mode active" type="button" data-mode="answer">Answer</button>
+              <button class="mode" type="button" data-mode="context">Context</button>
+            </div>
+            <label class="model-select model-select-mobile">
+              <span>Model</span>
+              <select id="modelPresetMobile" aria-label="Mobile answer model">
+                <option value="codex_high" selected>Codex High</option>
+                <option value="codex_fast">Codex Fast</option>
+                <option value="local_rag">Local RAG</option>
+              </select>
+            </label>
+          </div>
+          <div class="input-wrap">
+            <textarea
+              id="question"
+              rows="1"
+              placeholder="Ask about TIPS, OLO, LKT, CRs, UDFS, UHB, MyStandards..."
+            ></textarea>
+            <div class="composer-actions">
+              <button id="stopBtn" class="text-btn hidden" type="button">Stop</button>
+              <button id="askBtn" class="send-btn" type="submit">Send</button>
+            </div>
+          </div>
+        </form>
+      </main>
+
+      <aside class="inspector" aria-label="Sources and references">
+        <div class="inspector-head">
+          <div>
+            <h2>Sources</h2>
+            <span id="refsSummary">No references</span>
+          </div>
+          <button id="closeRefsBtn" class="icon-btn" type="button" title="Close sources" aria-label="Close sources">x</button>
+        </div>
+        <div id="refs" class="refs-list"></div>
+      </aside>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="/static/app.js?v=20260427-qa3"></script>
+  </body>
+</html>

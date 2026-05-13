@@ -1,0 +1,35 @@
+# Runtime data and generated corpus
+data/
+output/
+secrets/
+.playwright-cli/
+__pycache__/
+*.py[cod]
+*.pkl
+*.log
+*.raw.html
+
+# Credentials and local environment
+.env
+*.env
+google_oauth_client.json
+tips_oauth.env
+
+# Real source documents must stay local
+*.pdf
+*.zip
+*.xlsx
+*.xls
+*.docx
+*.pptx
+*.xml
+*.xsd
+
+# Local tooling
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+Thumbs.db
