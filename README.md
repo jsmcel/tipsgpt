@@ -12,6 +12,7 @@ This repository intentionally contains no ECB/TIPS documents, no MyStandards pac
 - `tips_mystandards.py` and `tips_enrich.py`: optional enrichment utilities.
 - `public/`: static browser interface.
 - `examples/selector_demo.py`: small synthetic demo of the information-selection pipeline.
+- `examples/chunking_demo.py`: small synthetic demo of the production chunk-building functions.
 
 ## What Is Not Included
 
@@ -21,6 +22,40 @@ This repository intentionally contains no ECB/TIPS documents, no MyStandards pac
 - Any official PDF, ZIP, XLSX, XML, XSD or MyStandards package.
 
 The `.gitignore` is deliberately strict so real documents and credentials do not get committed by accident.
+
+## How Chunks Are Built
+
+Chunk construction lives in `tips_ingest.py`:
+
+- `extract_document()` turns each local file into one or more text units:
+  - PDFs become page units;
+  - HTML/RSS becomes page-like text;
+  - XLSX becomes sheet units;
+  - ZIP packages become member-file units;
+  - plain text-like files become a single file unit.
+- `split_text()` cleans a unit and splits it into chunk-sized pieces:
+  - default maximum size is `1800` characters;
+  - default overlap is `250` characters;
+  - paragraph boundaries are preferred;
+  - overlong paragraphs are sliced directly;
+  - very small fragments are discarded.
+- `build_chunks()` wraps every text piece with retrieval metadata:
+  - `chunk_id`;
+  - source `doc_id`;
+  - title, category, family and release;
+  - revision status;
+  - document context path;
+  - unit type and unit identifier;
+  - local path and source URL.
+- `build_index()` writes `data/processed/chunks.jsonl`, then builds the word TF-IDF, character TF-IDF and BM25 matrices used by retrieval.
+
+The repository includes a synthetic chunking demo that imports and runs the real production functions:
+
+```powershell
+python examples\chunking_demo.py
+```
+
+It prints a readable split preview, then shows the production-shaped chunk records created by `build_chunks()`. The demo uses invented text only.
 
 ## How Information Selection Works
 
