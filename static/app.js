@@ -39,7 +39,7 @@ const els = {
   toast: document.getElementById("toast"),
 };
 
-const STORE_KEY = "tips-public-chat-v3";
+const STORE_KEY = "tips-chat-v4";
 const AUTH_TOKEN_KEY = "tips-session-token-v1";
 const API_BASE = String(window.TIPS_API_BASE || "").replace(/\/$/, "");
 
@@ -484,7 +484,7 @@ function renderRichText(text) {
 }
 
 function renderRefs(items = []) {
-  items = publicData(items);
+  items = publicData(items).filter(item => item.public_url_verified === true && /^https?:\/\//i.test(item.source_url || ""));
   state.lastRefs = items;
   els.refs.innerHTML = "";
   els.refsSummary.textContent = items.length ? `${items.length} referencias` : "Sin referencias";
@@ -800,7 +800,7 @@ function exportChat() {
   }
   if (chat.refs?.length) {
     lines.push("## Referencias");
-    for (const ref of chat.refs) {
+    for (const ref of chat.refs.filter(item => item.public_url_verified === true)) {
       const source = /^https?:\/\//i.test(ref.source_url || "") ? ` — ${ref.source_url}` : "";
       lines.push(`- [${ref.n ?? ref.ref}] ${ref.label ?? ref.citation ?? ref.title ?? "Referencia"}${source}`);
     }
