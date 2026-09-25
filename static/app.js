@@ -322,15 +322,25 @@ function showApp() {
   els.app?.classList.remove("hidden");
 }
 
+let authRetryTimer = null;
+
 async function refreshAuth(redirectOnMissing = true) {
+  window.clearTimeout(authRetryTimer);
+  authRetryTimer = null;
   let data = null;
   try {
     data = await fetchJson("/me", { timeout: 8000 });
   } catch {
     state.auth = { authenticated: false, mustChangePassword: false, email: "" };
     if (redirectOnMissing) {
-      setAuthNotice("No connection to the TIPS backend. The PC backend must be running.", "error");
+      setAuthNotice("No se ha podido conectar. Reintentando automáticamente…", "error");
       showAuthGate("login");
+      authRetryTimer = window.setTimeout(async () => {
+        if (await refreshAuth(true)) {
+          await loadManifest();
+          focusComposer();
+        }
+      }, 5000);
     }
     return false;
   }
@@ -568,10 +578,10 @@ function progressText(status, elapsedSeconds, misses = 0) {
 function friendlyErrorMessage(err) {
   const message = String(err?.message || err || "");
   if (/failed to fetch|networkerror|load failed/i.test(message)) {
-    return "El navegador ha perdido la conexion con el servidor local. Comprueba que sigue abierto en el puerto 8787 y pulsa Regenerar.";
+    return "Se ha perdido la conexión con TIPS GPT. Pulsa Regenerar para volver a intentarlo.";
   }
   if (/timeout/i.test(message)) {
-    return "El servidor local esta tardando demasiado en responder. La pregunta puede seguir ejecutandose; pulsa Regenerar si no aparece en unos segundos.";
+    return "TIPS GPT está tardando en responder. La pregunta puede seguir ejecutándose; pulsa Regenerar si no aparece en unos segundos.";
   }
   return message || "Error de red sin detalle";
 }
@@ -611,7 +621,7 @@ async function askWithJob(payload, pending, chat, signal) {
       if (err.name === "AbortError" || signal?.aborted) throw abortError();
       misses += 1;
       if (misses >= ASK_POLL_MAX_MISSES) {
-        throw new Error("No consigo reconectar con el servidor local. Revisa que la web siga abierta en el puerto 8787.");
+        throw new Error("No se ha podido restablecer la conexión con TIPS GPT. Pulsa Regenerar para volver a intentarlo.");
       }
       pending.content = progressText("running", elapsedSeconds, misses);
       chat.updatedAt = nowIso();
@@ -680,7 +690,7 @@ async function submitQuestion(rawQuestion, options = {}) {
     const detail = friendlyErrorMessage(err);
     pending.content = err.name === "AbortError"
       ? "Respuesta cancelada."
-      : `No he podido traer la respuesta del servidor local.\n\nDetalle: ${detail}\n\nPuedes pulsar Regenerar; la pagina ya no depende de una unica conexion larga, asi que los cortes puntuales no deberian romper el chat.`;
+      : `No se ha podido completar la respuesta.\n\n${detail}`;
     chat.engine = err.name === "AbortError" ? "Cancelado" : "Error";
     state.scrollIntent = "assistant-start";
   } finally {
