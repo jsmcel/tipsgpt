@@ -93,6 +93,52 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
+// Clean old saved chats as well as responses from the server.
+function publicData(payload) {
+  const privateFields = new Set(["local_path", "file_path", "source_path", "access_requests_path", "generator_error"]);
+  const paths = new Set();
+  const collect = (value) => {
+    if (Array.isArray(value)) return value.forEach(collect);
+    if (!value || typeof value !== "object") return;
+    for (const [key, item] of Object.entries(value)) {
+      if (privateFields.has(key) && typeof item === "string" && item && key !== "generator_error") {
+        paths.add(item);
+        paths.add(item.replace(/\\/g, "/"));
+        paths.add(item.replace(/\//g, "\\"));
+      } else collect(item);
+    }
+  };
+  collect(payload);
+  const knownPaths = [...paths].sort((a, b) => b.length - a.length);
+  const localPath = /file:\/\/[^\s<>"'`]+|(?<![\w/])[A-Za-z]:[\\/][^\s<>"'`|)\]}]+|\\\\[^\s<>"'`|)\]}]+|(?<![\w/])\/(?:Users|home|tmp|mnt|var|srv|opt|workspace|app)\/[^\s<>"'`|)\]}]+|(?<![\w/])(?:\.?\.?[\\/])?(?:tips[\\/])?(?:data[\\/](?:raw|processed)|corpus)[\\/][^\s<>"'`|)\]}]+/gi;
+  const cleanText = (input) => {
+    const urls = [];
+    let text = input.replace(/https?:\/\/[^\s<>"'`]+/gi, (url) => {
+      urls.push(url);
+      return `\u0000URL${urls.length - 1}\u0000`;
+    });
+    for (const path of knownPaths) text = text.split(path).join("");
+    text = text.replace(/`([^`\n]+)`/g, (match, code) => {
+      localPath.lastIndex = 0;
+      return localPath.test(code) ? "" : match;
+    });
+    text = text.replace(localPath, "");
+    text = text.replace(/\[([^\]\n]+)\]\(\s*<?\s*>?\s*\)/g, "$1");
+    text = text.replace(/^\s*(?:local path|ruta local|ruta del documento)\s*:\s*$\n?/gim, "");
+    text = text.replace(/[ \t]+[-–—|][ \t]*$/gm, "");
+    if (!text.includes("```")) text = text.replace(/``/g, "");
+    return text.replace(/\u0000URL(\d+)\u0000/g, (_, index) => urls[Number(index)]);
+  };
+  const clean = (value) => {
+    if (Array.isArray(value)) return value.map(clean);
+    if (value && typeof value === "object") {
+      return Object.fromEntries(Object.entries(value).filter(([key]) => !privateFields.has(key)).map(([key, item]) => [key, clean(item)]));
+    }
+    return typeof value === "string" ? cleanText(value) : value;
+  };
+  return clean(payload);
+}
+
 function activeChat() {
   return state.chats.find((chat) => chat.id === state.activeId) || null;
 }
@@ -123,8 +169,10 @@ function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
     if (saved?.chats?.length) {
-      state.chats = saved.chats;
+      state.chats = publicData(saved.chats);
       state.activeId = saved.activeId || saved.chats[0].id;
+      localStorage.removeItem(LEGACY_KEY);
+      saveState();
       return;
     }
   } catch {
@@ -139,11 +187,12 @@ function loadState() {
         title: "Chat importado",
         createdAt: nowIso(),
         updatedAt: nowIso(),
-        messages: legacy,
+        messages: publicData(legacy),
         refs: [],
         engine: "Codex High",
       }];
       state.activeId = state.chats[0].id;
+      localStorage.removeItem(LEGACY_KEY);
       saveState();
       return;
     }
@@ -163,7 +212,7 @@ function saveState() {
       refs: (chat.refs || []).slice(0, 30),
     })),
   };
-  localStorage.setItem(STORE_KEY, JSON.stringify(compact));
+  localStorage.setItem(STORE_KEY, JSON.stringify(publicData(compact)));
 }
 
 function toast(text) {
@@ -254,9 +303,9 @@ async function fetchJson(url, options = {}) {
       let data = null;
       if (text) {
         try {
-          data = JSON.parse(text);
+          data = publicData(JSON.parse(text));
         } catch {
-          data = { detail: text.slice(0, 500) };
+          data = { detail: publicData(text.slice(0, 500)) };
         }
       }
       if (!res.ok) {
@@ -475,7 +524,7 @@ function applyScrollIntent() {
 }
 
 function renderRichText(text) {
-  let html = escapeHtml(text || "");
+  let html = escapeHtml(publicData(text || ""));
   html = html.replace(/```([\s\S]*?)```/g, (_, code) => `<pre><code>${code.trim()}</code></pre>`);
   html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
   html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
@@ -485,6 +534,7 @@ function renderRichText(text) {
 }
 
 function renderRefs(items = []) {
+  items = publicData(items);
   state.lastRefs = items;
   els.refs.innerHTML = "";
   els.refsSummary.textContent = items.length ? `${items.length} referencias` : "Sin referencias";
@@ -497,9 +547,8 @@ function renderRefs(items = []) {
   for (const item of items) {
     const n = item.n ?? item.ref ?? "?";
     const label = item.label ?? item.citation ?? item.title ?? "Referencia";
-    const path = item.local_path ?? "";
     const excerpt = item.excerpt ?? "";
-    const source = item.source_url ?? "";
+    const source = /^https?:\/\//i.test(item.source_url || "") ? item.source_url : "";
     const node = document.createElement("article");
     node.className = "ref";
     node.id = `ref-${n}`;
@@ -508,7 +557,6 @@ function renderRefs(items = []) {
         <span>[${escapeHtml(n)}]</span>
         <strong>${escapeHtml(label)}</strong>
       </div>
-      ${path ? `<button class="path" type="button" data-copy-path="${escapeHtml(path)}">${escapeHtml(path)}</button>` : ""}
       ${excerpt ? `<details><summary>Extracto</summary><p>${escapeHtml(excerpt)}</p></details>` : ""}
       ${source ? `<a href="${escapeHtml(source)}" target="_blank" rel="noreferrer">Abrir fuente ECB</a>` : ""}
     `;
@@ -792,7 +840,7 @@ async function copyText(text) {
 }
 
 function exportChat() {
-  const chat = activeChat();
+  const chat = publicData(activeChat());
   if (!chat) return;
   const lines = [`# ${chat.title}`, ""];
   for (const msg of chat.messages.filter((m) => !m.pending)) {
@@ -803,7 +851,8 @@ function exportChat() {
   if (chat.refs?.length) {
     lines.push("## Referencias");
     for (const ref of chat.refs) {
-      lines.push(`- [${ref.n ?? ref.ref}] ${ref.label ?? ref.citation ?? ref.title ?? "Referencia"} ${ref.local_path ?? ""}`);
+      const source = /^https?:\/\//i.test(ref.source_url || "") ? ` — ${ref.source_url}` : "";
+      lines.push(`- [${ref.n ?? ref.ref}] ${ref.label ?? ref.citation ?? ref.title ?? "Referencia"}${source}`);
     }
   }
   const blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" });
@@ -1063,7 +1112,7 @@ els.messages.addEventListener("click", (event) => {
   if (copy) {
     const chat = activeChat();
     const msg = chat?.messages[Number(copy.dataset.copy)];
-    if (msg) copyText(msg.content);
+    if (msg) copyText(publicData(msg.content));
     return;
   }
 
@@ -1076,11 +1125,6 @@ els.messages.addEventListener("click", (event) => {
     chat.messages = chat.messages.slice(0, index);
     submitQuestion(previousUser.content, { regenerate: true });
   }
-});
-
-els.refs.addEventListener("click", (event) => {
-  const pathBtn = event.target.closest("[data-copy-path]");
-  if (pathBtn) copyText(pathBtn.dataset.copyPath);
 });
 
 window.addEventListener("keydown", (event) => {
