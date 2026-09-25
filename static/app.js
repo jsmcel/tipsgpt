@@ -7,12 +7,6 @@ const els = {
   changePasswordForm: document.getElementById("changePasswordForm"),
   currentPassword: document.getElementById("currentPassword"),
   newPassword: document.getElementById("newPassword"),
-  accessRequestForm: document.getElementById("accessRequestForm"),
-  requestEmail: document.getElementById("requestEmail"),
-  requestName: document.getElementById("requestName"),
-  requestOrg: document.getElementById("requestOrg"),
-  accessRequestBtn: document.getElementById("accessRequestBtn"),
-  accessRequestStatus: document.getElementById("accessRequestStatus"),
   app: document.querySelector(".app"),
   askForm: document.getElementById("askForm"),
   askBtn: document.getElementById("askBtn"),
@@ -45,8 +39,7 @@ const els = {
   toast: document.getElementById("toast"),
 };
 
-const STORE_KEY = "tips-premium-chat-v2";
-const LEGACY_KEY = "tips-local-chat";
+const STORE_KEY = "tips-public-chat-v3";
 const AUTH_TOKEN_KEY = "tips-session-token-v1";
 const API_BASE = String(window.TIPS_API_BASE || "").replace(/\/$/, "");
 
@@ -171,33 +164,11 @@ function loadState() {
     if (saved?.chats?.length) {
       state.chats = publicData(saved.chats);
       state.activeId = saved.activeId || saved.chats[0].id;
-      localStorage.removeItem(LEGACY_KEY);
       saveState();
       return;
     }
   } catch {
     // ignore corrupt storage
-  }
-
-  try {
-    const legacy = JSON.parse(localStorage.getItem(LEGACY_KEY) || "[]");
-    if (legacy.length) {
-      state.chats = [{
-        id: uid(),
-        title: "Chat importado",
-        createdAt: nowIso(),
-        updatedAt: nowIso(),
-        messages: publicData(legacy),
-        refs: [],
-        engine: "Codex High",
-      }];
-      state.activeId = state.chats[0].id;
-      localStorage.removeItem(LEGACY_KEY);
-      saveState();
-      return;
-    }
-  } catch {
-    // ignore legacy import errors
   }
 
   createChat();
@@ -339,7 +310,6 @@ function showAuthGate(mode = "login") {
   els.app?.classList.add("hidden");
   els.loginForm?.classList.toggle("hidden", mode !== "login");
   els.changePasswordForm?.classList.toggle("hidden", mode !== "change");
-  els.accessRequestForm?.classList.toggle("hidden", mode === "change");
   if (mode === "change") {
     els.currentPassword?.focus();
   } else {
@@ -350,26 +320,6 @@ function showAuthGate(mode = "login") {
 function showApp() {
   els.authGate?.classList.add("hidden");
   els.app?.classList.remove("hidden");
-}
-
-function setAccessRequestStatus(html, kind = "info") {
-  if (!els.accessRequestStatus) return;
-  els.accessRequestStatus.innerHTML = html;
-  els.accessRequestStatus.dataset.kind = kind;
-  els.accessRequestStatus.classList.toggle("show", Boolean(html));
-}
-
-function accessRequestMailto(email, name, organization) {
-  const body = [
-    "Hello,",
-    "",
-    "I request access to TIPS GPT.",
-    "",
-    `Email: ${email}`,
-    `Name: ${name || ""}`,
-    `Organization: ${organization || ""}`,
-  ].join("\n");
-  return `mailto:contact@trilemmaconsulting.com?subject=${encodeURIComponent("TIPS GPT access request")}&body=${encodeURIComponent(body)}`;
 }
 
 async function refreshAuth(redirectOnMissing = true) {
@@ -395,7 +345,7 @@ async function refreshAuth(redirectOnMissing = true) {
   if (!state.auth.authenticated) {
     clearSessionToken();
     if (redirectOnMissing) {
-      setAuthNotice("Enter with an approved username or email. Requests must be sent to contact@trilemmaconsulting.com.", "info");
+      setAuthNotice("Enter with your authorized username or email.", "info");
       showAuthGate("login");
     }
     return false;
@@ -961,61 +911,6 @@ els.changePasswordForm?.addEventListener("submit", async (event) => {
     focusComposer();
   } catch (err) {
     setAuthNotice(err.message || "The new key could not be saved.", "error");
-  }
-});
-
-els.accessRequestForm?.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const email = els.requestEmail.value.trim();
-  const name = els.requestName.value.trim();
-  const organization = els.requestOrg.value.trim();
-  if (!email) {
-    setAccessRequestStatus("Enter the email to approve.", "error");
-    els.requestEmail.focus();
-    return;
-  }
-  setAuthNotice("Registering request...", "info");
-  setAccessRequestStatus("Registering request...", "info");
-  if (els.accessRequestBtn) {
-    els.accessRequestBtn.disabled = true;
-    els.accessRequestBtn.textContent = "Registering";
-  }
-  try {
-    const data = await fetchJson("/api/access/request", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        name,
-        organization,
-        message: "TIPS GPT access request",
-      }),
-      timeout: 10000,
-    });
-    const mailto = accessRequestMailto(email, name, organization);
-    if (data.notification_sent) {
-      setAuthNotice("Request registered. Trilemma has been notified by email.", "ok");
-      setAccessRequestStatus(
-        `Request registered for <strong>${escapeHtml(email)}</strong>. Notification sent to <strong>contact@trilemmaconsulting.com</strong>.`,
-        "ok",
-      );
-    } else {
-      setAuthNotice("Request registered locally, but email notification is not configured.", "warning");
-      setAccessRequestStatus(
-        `Request registered for <strong>${escapeHtml(email)}</strong>, but email notification was not sent. <a href="${escapeHtml(mailto)}">Open the email manually</a>.`,
-        "error",
-      );
-    }
-    els.accessRequestStatus?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  } catch (err) {
-    setAuthNotice(err.message || "The request could not be registered.", "error");
-    setAccessRequestStatus(err.message || "The request could not be registered.", "error");
-    els.accessRequestStatus?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  } finally {
-    if (els.accessRequestBtn) {
-      els.accessRequestBtn.disabled = false;
-      els.accessRequestBtn.textContent = "Register request";
-    }
   }
 });
 

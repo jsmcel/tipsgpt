@@ -48,29 +48,6 @@
           <button class="send-btn" type="submit">Save new key</button>
         </form>
 
-        <form id="accessRequestForm" class="auth-card secondary">
-          <h2>Request approval</h2>
-          <p>Access is approved manually by Trilemma Consulting.</p>
-          <div class="contact-strip">
-            <span>Approval email</span>
-            <a href="mailto:contact@trilemmaconsulting.com?subject=TIPS%20GPT%20access%20request">contact@trilemmaconsulting.com</a>
-          </div>
-          <label>
-            Email to approve
-            <input id="requestEmail" type="email" autocomplete="email" required />
-          </label>
-          <label>
-            Name
-            <input id="requestName" type="text" autocomplete="name" />
-          </label>
-          <label>
-            Organization
-            <input id="requestOrg" type="text" autocomplete="organization" />
-          </label>
-          <a class="text-btn email-action" href="mailto:contact@trilemmaconsulting.com?subject=TIPS%20GPT%20access%20request">Send email request</a>
-          <button id="accessRequestBtn" class="text-btn" type="submit">Register request</button>
-          <p id="accessRequestStatus" class="inline-status" role="status" aria-live="polite"></p>
-        </form>
       </div>
     </section>
 
@@ -81,7 +58,7 @@
             <span class="brand-mark">T</span>
             <div>
               <strong>TIPS GPT</strong>
-              <span>Corpus local ECB</span>
+              <span>Documentación pública BCE</span>
             </div>
           </div>
           <div class="sidebar-head-actions">
@@ -198,10 +175,10 @@
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script>
-      window.TIPS_API_BASE = ["www.trilemmaconsulting.com", "trilemmaconsulting.com", "guidaitor.es", "www.guidaitor.es", "jsmcel.github.io"].includes(window.location.hostname)
-        ? "https://tips-api.ethcuela.es"
-        : "";
+      window.TIPS_API_BASE = ["localhost", "127.0.0.1", "[::1]", "tips-api.ethcuela.es"].includes(window.location.hostname)
+        ? ""
+        : "https://tips-api.ethcuela.es";
     </script>
-    <script src="static/app.js?v=20260925-publicrefs1"></script>
+    <script src="static/app.js?v=20260925-publiconly1"></script>
   </body>
 </html>
